@@ -17,7 +17,7 @@ class TransaksiController extends Controller
     {
         $query = Transaksi::with(['karyawan', 'item']);
 
-        // Filter pencarian
+        // Filter pencarian berdasarkan nama karyawan atau item
         if ($request->filled('search')) {
             $search = $request->search;
             $query->whereHas('karyawan', function($q) use ($search) {
@@ -27,13 +27,28 @@ class TransaksiController extends Controller
             });
         }
 
+        // Filter berdasarkan NPK
+        if ($request->filled('npk')) {
+            $query->where('npk', $request->npk);
+        }
+
+        // Filter berdasarkan Tipe Bayar
+        if ($request->filled('tipe_bayar')) {
+            $query->where('bayar', $request->tipe_bayar);
+        }
+
+        // Filter berdasarkan Tanggal Transaksi
         if ($request->filled('tanggal')) {
             $query->whereDate('tanggal_transaksi', $request->tanggal);
         }
 
         $transaksis = $query->orderBy('tanggal_transaksi', 'desc')->paginate(10);
 
-        return view('transaksi.index', compact('transaksis'));
+        // Get all Karyawan and Item for filter dropdowns
+        $karyawans = Karyawan::orderBy('nama')->get();
+        $items = Item::orderBy('nama_item')->get();
+
+        return view('transaksi.index', compact('transaksis', 'karyawans', 'items'));
     }
 
     /**
@@ -54,12 +69,12 @@ class TransaksiController extends Controller
     {
         $data = $request->validated();
         $data['tanggal_transaksi'] = $data['tanggal_transaksi'] ?? now()->toDateString();
-        $data['bayar'] = $request->has('bayar');
+        $data['bayar'] = $request->input('bayar', '1'); // Default to '1' (Lunas) if not provided
 
         Transaksi::create($data);
 
         return redirect()->route('transaksi.index')
-            ->with('success', 'Transaksi berhasil ditambahkan');
+            ->with('success', '✅ Transaksi berhasil ditambahkan!');
     }
 
     /**
@@ -87,12 +102,12 @@ class TransaksiController extends Controller
     public function update(TransaksiRequest $request, Transaksi $transaksi)
     {
         $data = $request->validated();
-        $data['bayar'] = $request->has('bayar');
+        $data['bayar'] = $request->input('bayar', '1'); // Default to '1' (Lunas) if not provided
 
         $transaksi->update($data);
 
         return redirect()->route('transaksi.index')
-            ->with('success', 'Transaksi berhasil diperbarui');
+            ->with('success', '✅ Transaksi berhasil diperbarui!');
     }
 
     /**
@@ -103,7 +118,7 @@ class TransaksiController extends Controller
         $transaksi->delete();
 
         return redirect()->route('transaksi.index')
-            ->with('success', 'Transaksi berhasil dihapus');
+            ->with('success', '🗑️ Transaksi berhasil dihapus!');
     }
 
     /**
